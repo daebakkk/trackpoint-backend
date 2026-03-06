@@ -21,12 +21,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-5=lbesg)nv6c+ojuus&!mh9+wycn78t0@v4^@uy*_8c9^ptjhl'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-5=lbesg)nv6c+ojuus&!mh9+wycn78t0@v4^@uy*_8c9^ptjhl')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,.onrender.com').split(',') if host.strip()]
 
 
 # Application definition
@@ -67,6 +67,10 @@ CORS_ALLOWED_ORIGINS = [
 ]
 if _cors_from_env:
     CORS_ALLOWED_ORIGINS.extend(_cors_from_env)
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://trackpoint-frontend.vercel.app',
+]
 
 TEMPLATES = [
     {
