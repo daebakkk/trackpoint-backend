@@ -1,4 +1,5 @@
 from django.http import JsonResponse
+from django.utils import timezone
 from rest_framework import filters, viewsets
 
 from .models import Asset, Assignment, Staff
@@ -22,6 +23,29 @@ class AssetViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'asset_id', 'location', 'status', 'assigned_to__name']
     ordering_fields = ['name', 'asset_id', 'location', 'status']
+
+    def perform_create(self, serializer):
+        asset = serializer.save()
+        if not asset.assigned_to_id:
+            return
+
+        today = timezone.now().date()
+        base_assignment_id = f"AS-{today:%Y%m%d}-{asset.asset_id}"
+        assignment_id = base_assignment_id
+        suffix = 1
+
+        while Assignment.objects.filter(assignment_id=assignment_id).exists():
+            suffix += 1
+            assignment_id = f"{base_assignment_id}-{suffix}"
+
+        Assignment.objects.create(
+            assignment_id=assignment_id,
+            asset=asset,
+            assignee=asset.assigned_to,
+            date_assigned=today,
+            status='Active',
+            approved_by='',
+        )
 
 
 class AssignmentViewSet(viewsets.ModelViewSet):
