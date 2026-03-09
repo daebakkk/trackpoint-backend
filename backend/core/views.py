@@ -3,6 +3,7 @@ from django.utils import timezone
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import Asset, Assignment, Staff
 from .serializers import (
@@ -11,6 +12,7 @@ from .serializers import (
     MeSerializer,
     RegisterSerializer,
     StaffSerializer,
+    CustomTokenObtainPairSerializer,
 )
 
 def health_check(request):
@@ -79,3 +81,7 @@ class MeView(APIView):
 
     def get(self, request):
         return Response(MeSerializer(request.user).data, status=status.HTTP_200_OK)
+
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer

@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import Asset, Assignment, Staff
 
@@ -78,3 +79,36 @@ class MeSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name']
+
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    identifier = serializers.CharField(write_only=True)
+    password = serializers.CharField(write_only=True)
+
+    @classmethod
+    def get_token(cls, user):
+        return super().get_token(user)
+
+    def validate(self, attrs):
+        identifier = attrs.get('identifier', '').strip()
+        password = attrs.get('password')
+
+        user = User.objects.filter(email__iexact=identifier).first()
+        if not user:
+            user = User.objects.filter(username__iexact=identifier).first()
+
+        if not user:
+            raise serializers.ValidationError({'detail': 'Invalid email/ID or password.'})
+
+        data = super().validate({
+            self.username_field: user.get_username(),
+            'password': password,
+        })
+        data['user'] = {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+        }
+        return data
