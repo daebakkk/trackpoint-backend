@@ -1,9 +1,17 @@
 from django.http import JsonResponse
 from django.utils import timezone
-from rest_framework import filters, viewsets
+from rest_framework import filters, permissions, status, viewsets
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import Asset, Assignment, Staff
-from .serializers import AssetSerializer, AssignmentSerializer, StaffSerializer
+from .serializers import (
+    AssetSerializer,
+    AssignmentSerializer,
+    MeSerializer,
+    RegisterSerializer,
+    StaffSerializer,
+)
 
 def health_check(request):
     return JsonResponse({'status': 'ok'})
@@ -54,3 +62,20 @@ class AssignmentViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['assignment_id', 'status', 'approved_by', 'asset__name', 'assignee__name']
     ordering_fields = ['assignment_id', 'date_assigned', 'return_date', 'status']
+
+
+class RegisterView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = RegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(MeSerializer(user).data, status=status.HTTP_201_CREATED)
+
+
+class MeView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        return Response(MeSerializer(request.user).data, status=status.HTTP_200_OK)
