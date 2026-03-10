@@ -56,18 +56,51 @@ class AssignmentSerializer(serializers.ModelSerializer):
 
 
 class MaintenanceTicketSerializer(serializers.ModelSerializer):
+    asset_ref = serializers.PrimaryKeyRelatedField(read_only=True)
+    asset_name = serializers.CharField(source='asset_ref.name', read_only=True)
+    asset_code = serializers.CharField(source='asset_ref.asset_id', read_only=True)
+    asset_id = serializers.CharField(write_only=True, required=False)
+
     class Meta:
         model = MaintenanceTicket
         fields = [
             'id',
             'ticket_id',
             'lane',
+            'asset_ref',
             'asset',
+            'asset_name',
+            'asset_code',
+            'asset_id',
             'task',
             'owner',
             'eta',
             'created_at',
         ]
+
+    def validate(self, attrs):
+        asset_id = attrs.get('asset_id')
+        if self.instance is None and not asset_id:
+            raise serializers.ValidationError({'asset_id': 'Asset ID is required.'})
+        return attrs
+
+    def _attach_asset(self, validated_data):
+        asset_id = validated_data.pop('asset_id', None)
+        if not asset_id:
+            return
+        asset = Asset.objects.filter(asset_id__iexact=asset_id).first()
+        if not asset:
+            raise serializers.ValidationError({'asset_id': f'Asset ID "{asset_id}" does not exist.'})
+        validated_data['asset_ref'] = asset
+        validated_data['asset'] = asset.name
+
+    def create(self, validated_data):
+        self._attach_asset(validated_data)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        self._attach_asset(validated_data)
+        return super().update(instance, validated_data)
 
 
 class RegisterSerializer(serializers.ModelSerializer):

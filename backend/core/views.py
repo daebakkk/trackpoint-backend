@@ -71,7 +71,7 @@ class MaintenanceTicketViewSet(viewsets.ModelViewSet):
     queryset = MaintenanceTicket.objects.all().order_by('-created_at')
     serializer_class = MaintenanceTicketSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['ticket_id', 'lane', 'asset', 'task', 'owner', 'eta']
+    search_fields = ['ticket_id', 'lane', 'asset', 'task', 'owner', 'eta', 'asset_ref__name', 'asset_ref__asset_id']
     ordering_fields = ['ticket_id', 'created_at', 'lane']
 
 

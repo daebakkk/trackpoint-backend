@@ -56,6 +56,13 @@ class MaintenanceTicket(models.Model):
 
     ticket_id = models.CharField(max_length=100, unique=True)
     lane = models.CharField(max_length=20, choices=LANE_CHOICES)
+    asset_ref = models.ForeignKey(
+        Asset,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='maintenance_tickets',
+    )
     asset = models.CharField(max_length=200)
     task = models.CharField(max_length=200)
     owner = models.CharField(max_length=100)
