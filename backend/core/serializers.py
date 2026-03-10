@@ -60,6 +60,7 @@ class MaintenanceTicketSerializer(serializers.ModelSerializer):
     asset_name = serializers.CharField(source='asset_ref.name', read_only=True)
     asset_code = serializers.CharField(source='asset_ref.asset_id', read_only=True)
     asset_id = serializers.CharField(write_only=True, required=False)
+    asset = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = MaintenanceTicket
