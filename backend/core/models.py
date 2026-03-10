@@ -45,3 +45,22 @@ class Assignment(models.Model):
 
     def __str__(self):
         return self.assignment_id
+
+
+class MaintenanceTicket(models.Model):
+    LANE_CHOICES = [
+        ('Critical', 'Critical'),
+        ('Planned', 'Planned'),
+        ('Preventive', 'Preventive'),
+    ]
+
+    ticket_id = models.CharField(max_length=100, unique=True)
+    lane = models.CharField(max_length=20, choices=LANE_CHOICES)
+    asset = models.CharField(max_length=200)
+    task = models.CharField(max_length=200)
+    owner = models.CharField(max_length=100)
+    eta = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.ticket_id

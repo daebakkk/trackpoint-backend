@@ -5,10 +5,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import Asset, Assignment, Staff
+from .models import Asset, Assignment, Staff, MaintenanceTicket
 from .serializers import (
     AssetSerializer,
     AssignmentSerializer,
+    MaintenanceTicketSerializer,
     MeSerializer,
     RegisterSerializer,
     StaffSerializer,
@@ -64,6 +65,14 @@ class AssignmentViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['assignment_id', 'status', 'approved_by', 'asset__name', 'assignee__name']
     ordering_fields = ['assignment_id', 'date_assigned', 'return_date', 'status']
+
+
+class MaintenanceTicketViewSet(viewsets.ModelViewSet):
+    queryset = MaintenanceTicket.objects.all().order_by('-created_at')
+    serializer_class = MaintenanceTicketSerializer
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['ticket_id', 'lane', 'asset', 'task', 'owner', 'eta']
+    ordering_fields = ['ticket_id', 'created_at', 'lane']
 
 
 class RegisterView(APIView):

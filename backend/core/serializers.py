@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from .models import Asset, Assignment, Staff
+from .models import Asset, Assignment, Staff, MaintenanceTicket
 
 User = get_user_model()
 
@@ -52,6 +52,21 @@ class AssignmentSerializer(serializers.ModelSerializer):
             'return_date',
             'status',
             'approved_by',
+        ]
+
+
+class MaintenanceTicketSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MaintenanceTicket
+        fields = [
+            'id',
+            'ticket_id',
+            'lane',
+            'asset',
+            'task',
+            'owner',
+            'eta',
+            'created_at',
         ]
 
 
