@@ -35,11 +35,21 @@ class AssetViewSet(viewsets.ModelViewSet):
     search_fields = ['name', 'asset_id', 'location', 'status', 'assigned_to__name']
     ordering_fields = ['name', 'asset_id', 'location', 'status']
 
+    def perform_update(self, serializer):
+        previous_assigned_to_id = serializer.instance.assigned_to_id
+        asset = serializer.save()
+        if not asset.assigned_to_id or asset.assigned_to_id == previous_assigned_to_id:
+            return
+        self._create_assignment(asset)
+
     def perform_create(self, serializer):
         asset = serializer.save()
         if not asset.assigned_to_id:
             return
+        self._create_assignment(asset)
 
+    @staticmethod
+    def _create_assignment(asset):
         today = timezone.now().date()
         base_assignment_id = f"AS-{today:%Y%m%d}-{asset.asset_id}"
         assignment_id = base_assignment_id
@@ -65,6 +75,18 @@ class AssignmentViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['assignment_id', 'status', 'approved_by', 'asset__name', 'assignee__name']
     ordering_fields = ['assignment_id', 'date_assigned', 'return_date', 'status']
+
+    def perform_update(self, serializer):
+        previous_status = serializer.instance.status
+        assignment = serializer.save()
+        if assignment.status != 'Returned' or previous_status == 'Returned':
+            return
+        if assignment.return_date is None:
+            assignment.return_date = timezone.now().date()
+            assignment.save(update_fields=['return_date'])
+        if assignment.asset and assignment.asset.assigned_to_id == assignment.assignee_id:
+            assignment.asset.assigned_to = None
+            assignment.asset.save(update_fields=['assigned_to'])
 
 
 class MaintenanceTicketViewSet(viewsets.ModelViewSet):
