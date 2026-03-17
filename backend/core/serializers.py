@@ -25,6 +25,7 @@ class AssetSerializer(serializers.ModelSerializer):
             'name',
             'location',
             'status',
+            'created_at',
             'assigned_to',
             'assigned_to_name',
             'assigned_to_staff_id',
