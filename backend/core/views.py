@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import Asset, Assignment, Staff, MaintenanceTicket
+from .models import Asset, Assignment, Staff, MaintenanceTicket, UserSettings
 from .serializers import (
     AssetSerializer,
     AssignmentSerializer,
@@ -14,6 +14,7 @@ from .serializers import (
     RegisterSerializer,
     StaffSerializer,
     CustomTokenObtainPairSerializer,
+    UserSettingsSerializer,
 )
 
 def health_check(request):
@@ -96,6 +97,17 @@ class MaintenanceTicketViewSet(viewsets.ModelViewSet):
     search_fields = ['ticket_id', 'lane', 'asset', 'task', 'owner', 'eta', 'asset_ref__name', 'asset_ref__asset_id']
     ordering_fields = ['ticket_id', 'created_at', 'lane']
 
+    def perform_update(self, serializer):
+        previous_status = serializer.instance.status
+        ticket = serializer.save()
+        if ticket.status == 'Completed' and previous_status != 'Completed':
+            if ticket.completed_at is None:
+                ticket.completed_at = timezone.now()
+                ticket.save(update_fields=['completed_at'])
+            if ticket.asset_ref:
+                ticket.asset_ref.status = 'Good condition'
+                ticket.asset_ref.save(update_fields=['status'])
+
 
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -116,3 +128,21 @@ class MeView(APIView):
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+
+
+class UserSettingsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        settings, created = UserSettings.objects.get_or_create(user=request.user)
+        if created and not settings.display_name:
+            settings.display_name = request.user.get_full_name() or request.user.username
+            settings.save(update_fields=['display_name'])
+        return Response(UserSettingsSerializer(settings).data, status=status.HTTP_200_OK)
+
+    def patch(self, request):
+        settings, _ = UserSettings.objects.get_or_create(user=request.user)
+        serializer = UserSettingsSerializer(settings, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(UserSettingsSerializer(settings).data, status=status.HTTP_200_OK)

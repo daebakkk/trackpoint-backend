@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from .models import Asset, Assignment, Staff, MaintenanceTicket
+from .models import Asset, Assignment, Staff, MaintenanceTicket, UserSettings
 
 User = get_user_model()
 
@@ -77,7 +77,9 @@ class MaintenanceTicketSerializer(serializers.ModelSerializer):
             'task',
             'owner',
             'eta',
+            'status',
             'created_at',
+            'completed_at',
         ]
 
     def validate(self, attrs):
@@ -162,3 +164,36 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'last_name': user.last_name,
         }
         return data
+
+
+class UserSettingsSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(source='user.email', required=False)
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
+    class Meta:
+        model = UserSettings
+        fields = [
+            'display_name',
+            'maintenance_alerts',
+            'assignment_updates',
+            'weekly_summary',
+            'default_office',
+            'report_range',
+            'email',
+            'password',
+        ]
+
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop('user', {})
+        password = validated_data.pop('password', None)
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+        instance.save()
+
+        if 'email' in user_data:
+            instance.user.email = user_data['email']
+        if password:
+            instance.user.set_password(password)
+        if user_data or password:
+            instance.user.save()
+        return instance

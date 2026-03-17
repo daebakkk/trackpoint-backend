@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.db import models
 
 
@@ -68,7 +69,22 @@ class MaintenanceTicket(models.Model):
     task = models.CharField(max_length=200)
     owner = models.CharField(max_length=100)
     eta = models.CharField(max_length=100)
+    status = models.CharField(max_length=40, default='Open')
     created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.ticket_id
+
+
+class UserSettings(models.Model):
+    user = models.OneToOneField(get_user_model(), on_delete=models.CASCADE, related_name='settings')
+    display_name = models.CharField(max_length=120, blank=True)
+    maintenance_alerts = models.BooleanField(default=True)
+    assignment_updates = models.BooleanField(default=True)
+    weekly_summary = models.BooleanField(default=False)
+    default_office = models.CharField(max_length=100, blank=True)
+    report_range = models.CharField(max_length=50, blank=True)
+
+    def __str__(self):
+        return f"Settings for {self.user_id}"
