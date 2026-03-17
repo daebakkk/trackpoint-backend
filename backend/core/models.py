@@ -88,3 +88,24 @@ class UserSettings(models.Model):
 
     def __str__(self):
         return f"Settings for {self.user_id}"
+
+
+class LocationEvent(models.Model):
+    asset = models.ForeignKey(
+        Asset,
+        on_delete=models.CASCADE,
+        related_name='location_events',
+    )
+    location = models.CharField(max_length=200)
+    note = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_by = models.ForeignKey(
+        get_user_model(),
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='location_events',
+    )
+
+    def __str__(self):
+        return f"{self.asset.asset_id} @ {self.location}"

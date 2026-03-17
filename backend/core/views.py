@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import Asset, Assignment, Staff, MaintenanceTicket, UserSettings
+from .models import Asset, Assignment, Staff, MaintenanceTicket, UserSettings, LocationEvent
 from .serializers import (
     AssetSerializer,
     AssignmentSerializer,
@@ -15,6 +15,7 @@ from .serializers import (
     StaffSerializer,
     CustomTokenObtainPairSerializer,
     UserSettingsSerializer,
+    LocationEventSerializer,
 )
 
 def health_check(request):
@@ -107,6 +108,21 @@ class MaintenanceTicketViewSet(viewsets.ModelViewSet):
             if ticket.asset_ref:
                 ticket.asset_ref.status = 'Good condition'
                 ticket.asset_ref.save(update_fields=['status'])
+
+
+class LocationEventViewSet(viewsets.ModelViewSet):
+    queryset = LocationEvent.objects.select_related('asset', 'updated_by').all().order_by('-created_at')
+    serializer_class = LocationEventSerializer
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['asset__name', 'asset__asset_id', 'location', 'note']
+    ordering_fields = ['created_at']
+
+    def perform_create(self, serializer):
+        location_event = serializer.save(updated_by=self.request.user)
+        asset = location_event.asset
+        if asset.location != location_event.location:
+            asset.location = location_event.location
+            asset.save(update_fields=['location'])
 
 
 class RegisterView(APIView):

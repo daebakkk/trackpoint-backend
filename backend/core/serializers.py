@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from .models import Asset, Assignment, Staff, MaintenanceTicket, UserSettings
+from .models import Asset, Assignment, Staff, MaintenanceTicket, UserSettings, LocationEvent
 
 User = get_user_model()
 
@@ -197,3 +197,47 @@ class UserSettingsSerializer(serializers.ModelSerializer):
         if user_data or password:
             instance.user.save()
         return instance
+
+
+class LocationEventSerializer(serializers.ModelSerializer):
+    asset_name = serializers.CharField(source='asset.name', read_only=True)
+    asset_code = serializers.CharField(source='asset.asset_id', read_only=True)
+    asset_id = serializers.CharField(write_only=True, required=False)
+    updated_by_name = serializers.CharField(source='updated_by.username', read_only=True)
+
+    class Meta:
+        model = LocationEvent
+        fields = [
+            'id',
+            'asset',
+            'asset_name',
+            'asset_code',
+            'asset_id',
+            'location',
+            'note',
+            'created_at',
+            'updated_by_name',
+        ]
+
+    def validate(self, attrs):
+        asset_id = attrs.get('asset_id')
+        if self.instance is None and not asset_id:
+            raise serializers.ValidationError({'asset_id': 'Asset ID is required.'})
+        return attrs
+
+    def _attach_asset(self, validated_data):
+        asset_id = validated_data.pop('asset_id', None)
+        if not asset_id:
+            return
+        asset = Asset.objects.filter(asset_id__iexact=asset_id).first()
+        if not asset:
+            raise serializers.ValidationError({'asset_id': f'Asset ID "{asset_id}" does not exist.'})
+        validated_data['asset'] = asset
+
+    def create(self, validated_data):
+        self._attach_asset(validated_data)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        self._attach_asset(validated_data)
+        return super().update(instance, validated_data)
