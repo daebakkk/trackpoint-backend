@@ -158,7 +158,17 @@ class UserSettingsView(APIView):
 
     def patch(self, request):
         settings, _ = UserSettings.objects.get_or_create(user=request.user)
-        serializer = UserSettingsSerializer(settings, data=request.data, partial=True)
+        data = request.data.copy()
+        password = data.pop('password', None)
+        current_password = data.pop('current_password', None)
+        if password is not None:
+            if not current_password:
+                return Response({'current_password': ['Current password is required.']}, status=status.HTTP_400_BAD_REQUEST)
+            if not request.user.check_password(current_password):
+                return Response({'current_password': ['Current password is incorrect.']}, status=status.HTTP_400_BAD_REQUEST)
+            request.user.set_password(password)
+            request.user.save()
+        serializer = UserSettingsSerializer(settings, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(UserSettingsSerializer(settings).data, status=status.HTTP_200_OK)
