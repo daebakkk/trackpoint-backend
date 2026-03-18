@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
@@ -220,7 +221,10 @@ class UserSettingsSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({'current_password': 'Current password is required.'})
             instance.user.set_password(password)
         if user_data or password:
-            instance.user.save()
+            try:
+                instance.user.save()
+            except IntegrityError:
+                raise serializers.ValidationError({'username': 'This username is already in use.'})
         return instance
 
 
