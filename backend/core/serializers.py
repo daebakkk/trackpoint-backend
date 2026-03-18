@@ -168,6 +168,9 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class UserSettingsSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', required=False)
+    first_name = serializers.CharField(source='user.first_name', required=False, allow_blank=True)
+    last_name = serializers.CharField(source='user.last_name', required=False, allow_blank=True)
+    username = serializers.CharField(source='user.username', required=False, allow_blank=True)
     current_password = serializers.CharField(write_only=True, required=False, allow_blank=True)
     password = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
@@ -181,6 +184,9 @@ class UserSettingsSerializer(serializers.ModelSerializer):
             'dark_mode',
             'report_range',
             'email',
+            'first_name',
+            'last_name',
+            'username',
             'current_password',
             'password',
         ]
@@ -195,6 +201,18 @@ class UserSettingsSerializer(serializers.ModelSerializer):
 
         if 'email' in user_data:
             instance.user.email = user_data['email']
+        if 'username' in user_data:
+            instance.user.username = user_data['username']
+        if 'first_name' in user_data:
+            instance.user.first_name = user_data['first_name']
+        if 'last_name' in user_data:
+            instance.user.last_name = user_data['last_name']
+        if 'first_name' not in user_data and 'last_name' not in user_data:
+            display_name = validated_data.get('display_name', instance.display_name)
+            if display_name:
+                parts = display_name.split()
+                instance.user.first_name = parts[0]
+                instance.user.last_name = ' '.join(parts[1:]) if len(parts) > 1 else ''
         if password:
             if current_password and not instance.user.check_password(current_password):
                 raise serializers.ValidationError({'current_password': 'Current password is incorrect.'})
