@@ -168,6 +168,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class UserSettingsSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', required=False)
+    current_password = serializers.CharField(write_only=True, required=False, allow_blank=True)
     password = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
@@ -177,14 +178,15 @@ class UserSettingsSerializer(serializers.ModelSerializer):
             'maintenance_alerts',
             'assignment_updates',
             'weekly_summary',
-            'default_office',
             'report_range',
             'email',
+            'current_password',
             'password',
         ]
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop('user', {})
+        current_password = validated_data.pop('current_password', None)
         password = validated_data.pop('password', None)
         for field, value in validated_data.items():
             setattr(instance, field, value)
@@ -193,6 +195,10 @@ class UserSettingsSerializer(serializers.ModelSerializer):
         if 'email' in user_data:
             instance.user.email = user_data['email']
         if password:
+            if current_password and not instance.user.check_password(current_password):
+                raise serializers.ValidationError({'current_password': 'Current password is incorrect.'})
+            if not current_password:
+                raise serializers.ValidationError({'current_password': 'Current password is required.'})
             instance.user.set_password(password)
         if user_data or password:
             instance.user.save()
