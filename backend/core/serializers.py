@@ -178,6 +178,7 @@ class UserSettingsSerializer(serializers.ModelSerializer):
             'maintenance_alerts',
             'assignment_updates',
             'weekly_summary',
+            'dark_mode',
             'report_range',
             'email',
             'current_password',

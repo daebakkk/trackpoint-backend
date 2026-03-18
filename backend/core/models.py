@@ -83,6 +83,7 @@ class UserSettings(models.Model):
     maintenance_alerts = models.BooleanField(default=True)
     assignment_updates = models.BooleanField(default=True)
     weekly_summary = models.BooleanField(default=False)
+    dark_mode = models.BooleanField(default=False)
     report_range = models.CharField(max_length=50, blank=True)
 
     def __str__(self):
