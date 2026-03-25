@@ -1,11 +1,13 @@
 from django.http import JsonResponse
 from django.utils import timezone
+from django.contrib.auth import get_user_model
 from rest_framework import filters, permissions, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import Asset, Assignment, Staff, MaintenanceTicket, UserSettings, LocationEvent
+from .models import Asset, Assignment, Staff, MaintenanceTicket, UserSettings, LocationEvent, Notification
 from .serializers import (
     AssetSerializer,
     AssignmentSerializer,
@@ -16,7 +18,24 @@ from .serializers import (
     CustomTokenObtainPairSerializer,
     UserSettingsSerializer,
     LocationEventSerializer,
+    NotificationSerializer,
 )
+
+User = get_user_model()
+
+
+def create_notifications_for_all(title, message='', link='', event_type='general'):
+    users = User.objects.all()
+    Notification.objects.bulk_create([
+        Notification(
+            user=user,
+            title=title,
+            message=message,
+            link=link,
+            event_type=event_type,
+        )
+        for user in users
+    ])
 
 def health_check(request):
     return JsonResponse({'status': 'ok'})
@@ -89,6 +108,21 @@ class AssignmentViewSet(viewsets.ModelViewSet):
         if assignment.asset and assignment.asset.assigned_to_id == assignment.assignee_id:
             assignment.asset.assigned_to = None
             assignment.asset.save(update_fields=['assigned_to'])
+        create_notifications_for_all(
+            title=f"Assignment {assignment.assignment_id} returned",
+            message=f"{assignment.asset.name if assignment.asset else 'Asset'} is now unassigned.",
+            link='/assignments',
+            event_type='assignment',
+        )
+
+    def perform_create(self, serializer):
+        assignment = serializer.save()
+        create_notifications_for_all(
+            title=f"New assignment {assignment.assignment_id}",
+            message=f"{assignment.asset.name if assignment.asset else 'Asset'} assigned to {assignment.assignee.name if assignment.assignee else 'staff'}",
+            link='/assignments',
+            event_type='assignment',
+        )
 
 
 class MaintenanceTicketViewSet(viewsets.ModelViewSet):
@@ -108,6 +142,21 @@ class MaintenanceTicketViewSet(viewsets.ModelViewSet):
             if ticket.asset_ref:
                 ticket.asset_ref.status = 'Good condition'
                 ticket.asset_ref.save(update_fields=['status'])
+            create_notifications_for_all(
+                title=f"Ticket {ticket.ticket_id} completed",
+                message=f"{ticket.asset_ref.name if ticket.asset_ref else ticket.asset} marked resolved.",
+                link='/maintenance',
+                event_type='ticket',
+            )
+
+    def perform_create(self, serializer):
+        ticket = serializer.save()
+        create_notifications_for_all(
+            title=f"New ticket {ticket.ticket_id}",
+            message=f"{ticket.asset_ref.name if ticket.asset_ref else ticket.asset} added to {ticket.lane}.",
+            link='/maintenance',
+            event_type='ticket',
+        )
 
 
 class LocationEventViewSet(viewsets.ModelViewSet):
@@ -172,3 +221,20 @@ class UserSettingsView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(UserSettingsSerializer(settings).data, status=status.HTTP_200_OK)
+
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    serializer_class = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        qs = Notification.objects.filter(user=self.request.user).order_by('-created_at')
+        unread = self.request.query_params.get('unread')
+        if unread in {'1', 'true', 'True'}:
+            qs = qs.filter(is_read=False)
+        return qs
+
+    @action(detail=False, methods=['post'])
+    def mark_all_read(self, request):
+        Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+        return Response({'status': 'ok'}, status=status.HTTP_200_OK)

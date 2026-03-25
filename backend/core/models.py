@@ -109,3 +109,23 @@ class LocationEvent(models.Model):
 
     def __str__(self):
         return f"{self.asset.asset_id} @ {self.location}"
+
+
+class Notification(models.Model):
+    EVENT_CHOICES = [
+        ('general', 'General'),
+        ('ticket', 'Ticket'),
+        ('assignment', 'Assignment'),
+        ('asset', 'Asset'),
+    ]
+
+    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE, related_name='notifications')
+    title = models.CharField(max_length=140)
+    message = models.CharField(max_length=240, blank=True)
+    link = models.CharField(max_length=200, blank=True)
+    event_type = models.CharField(max_length=40, choices=EVENT_CHOICES, default='general')
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user_id}: {self.title}"

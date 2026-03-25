@@ -2,7 +2,7 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from .views import AssetViewSet, AssignmentViewSet, CustomTokenObtainPairView, LocationEventViewSet, MaintenanceTicketViewSet, MeView, RegisterView, StaffViewSet, UserSettingsView, health_check
+from .views import AssetViewSet, AssignmentViewSet, CustomTokenObtainPairView, LocationEventViewSet, MaintenanceTicketViewSet, MeView, RegisterView, StaffViewSet, UserSettingsView, NotificationViewSet, health_check
 
 app_name = 'core'
 
@@ -12,6 +12,7 @@ router.register(r'assets', AssetViewSet, basename='asset')
 router.register(r'assignments', AssignmentViewSet, basename='assignment')
 router.register(r'maintenance-tickets', MaintenanceTicketViewSet, basename='maintenance-ticket')
 router.register(r'location-events', LocationEventViewSet, basename='location-event')
+router.register(r'notifications', NotificationViewSet, basename='notification')
 
 urlpatterns = [
     path('health/', health_check, name='health_check'),

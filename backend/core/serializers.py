@@ -3,7 +3,7 @@ from django.db import IntegrityError
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from .models import Asset, Assignment, Staff, MaintenanceTicket, UserSettings, LocationEvent
+from .models import Asset, Assignment, Staff, MaintenanceTicket, UserSettings, LocationEvent, Notification
 
 User = get_user_model()
 
@@ -270,3 +270,17 @@ class LocationEventSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         self._attach_asset(validated_data)
         return super().update(instance, validated_data)
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = [
+            'id',
+            'title',
+            'message',
+            'link',
+            'event_type',
+            'is_read',
+            'created_at',
+        ]
