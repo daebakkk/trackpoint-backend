@@ -1,5 +1,6 @@
 from django.http import JsonResponse
 from django.utils import timezone
+from django.utils.dateparse import parse_date, parse_datetime
 from django.contrib.auth import get_user_model
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
@@ -37,6 +38,36 @@ def create_notifications_for_all(title, message='', link='', event_type='general
         for user in users
     ])
 
+
+def parse_eta_date(value):
+    if not value:
+        return None
+    parsed = parse_datetime(value)
+    if parsed:
+        return parsed.date()
+    return parse_date(value)
+
+
+def maybe_send_due_notification(ticket):
+    eta_date = parse_eta_date(ticket.eta)
+    if not eta_date:
+        return
+    today = timezone.localdate()
+    if eta_date == today:
+        create_notifications_for_all(
+            title=f"Ticket {ticket.ticket_id} due today",
+            message=f"{ticket.asset_ref.name if ticket.asset_ref else ticket.asset} is due today.",
+            link='/maintenance',
+            event_type='ticket',
+        )
+    elif eta_date == today + timezone.timedelta(days=1):
+        create_notifications_for_all(
+            title=f"Ticket {ticket.ticket_id} due tomorrow",
+            message=f"{ticket.asset_ref.name if ticket.asset_ref else ticket.asset} is due tomorrow.",
+            link='/maintenance',
+            event_type='ticket',
+        )
+
 def health_check(request):
     return JsonResponse({'status': 'ok'})
 
@@ -62,12 +93,30 @@ class AssetViewSet(viewsets.ModelViewSet):
         if not asset.assigned_to_id or asset.assigned_to_id == previous_assigned_to_id:
             return
         self._create_assignment(asset)
+        create_notifications_for_all(
+            title=f"Asset assigned: {asset.asset_id}",
+            message=f"{asset.name} assigned to {asset.assigned_to.name if asset.assigned_to else 'staff'}.",
+            link='/assets',
+            event_type='asset',
+        )
 
     def perform_create(self, serializer):
         asset = serializer.save()
+        create_notifications_for_all(
+            title=f"New asset added: {asset.asset_id}",
+            message=f"{asset.name} added to inventory.",
+            link='/assets',
+            event_type='asset',
+        )
         if not asset.assigned_to_id:
             return
         self._create_assignment(asset)
+        create_notifications_for_all(
+            title=f"Asset assigned: {asset.asset_id}",
+            message=f"{asset.name} assigned to {asset.assigned_to.name if asset.assigned_to else 'staff'}.",
+            link='/assets',
+            event_type='asset',
+        )
 
     @staticmethod
     def _create_assignment(asset):
@@ -148,6 +197,8 @@ class MaintenanceTicketViewSet(viewsets.ModelViewSet):
                 link='/maintenance',
                 event_type='ticket',
             )
+        if ticket.status != 'Completed':
+            maybe_send_due_notification(ticket)
 
     def perform_create(self, serializer):
         ticket = serializer.save()
@@ -157,6 +208,8 @@ class MaintenanceTicketViewSet(viewsets.ModelViewSet):
             link='/maintenance',
             event_type='ticket',
         )
+        if ticket.status != 'Completed':
+            maybe_send_due_notification(ticket)
 
 
 class LocationEventViewSet(viewsets.ModelViewSet):
