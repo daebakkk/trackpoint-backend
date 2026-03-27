@@ -235,7 +235,7 @@ class MaintenanceTicketViewSet(viewsets.ModelViewSet):
         ticket = serializer.save()
         create_notifications_for_all(
             title=f"New ticket {ticket.ticket_id}",
-            message=f"{ticket.asset_ref.name if ticket.asset_ref else ticket.asset} added to {ticket.lane}.",
+            message=f"New ticket created for {ticket.asset_ref.name if ticket.asset_ref else ticket.asset}.",
             link='/maintenance',
             event_type='ticket',
             )
