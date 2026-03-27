@@ -68,6 +68,32 @@ def maybe_send_due_notification(ticket):
             event_type='ticket',
         )
 
+
+def update_asset_status_for_ticket(ticket):
+    if ticket.status == 'Completed' or not ticket.asset_ref:
+        return
+    eta_date = parse_eta_date(ticket.eta)
+    if not eta_date:
+        return
+    today = timezone.localdate()
+    if eta_date <= today and ticket.asset_ref.status != 'In Repair':
+        ticket.asset_ref.status = 'In Repair'
+        ticket.asset_ref.save(update_fields=['status'])
+
+
+def sync_due_ticket_assets():
+    today = timezone.localdate()
+    tickets = MaintenanceTicket.objects.exclude(status='Completed').select_related('asset_ref')
+    for ticket in tickets:
+        if not ticket.asset_ref:
+            continue
+        eta_date = parse_eta_date(ticket.eta)
+        if not eta_date:
+            continue
+        if eta_date <= today and ticket.asset_ref.status != 'In Repair':
+            ticket.asset_ref.status = 'In Repair'
+            ticket.asset_ref.save(update_fields=['status'])
+
 def health_check(request):
     return JsonResponse({'status': 'ok'})
 
@@ -181,6 +207,10 @@ class MaintenanceTicketViewSet(viewsets.ModelViewSet):
     search_fields = ['ticket_id', 'lane', 'asset', 'task', 'owner', 'eta', 'asset_ref__name', 'asset_ref__asset_id']
     ordering_fields = ['ticket_id', 'created_at', 'lane']
 
+    def list(self, request, *args, **kwargs):
+        sync_due_ticket_assets()
+        return super().list(request, *args, **kwargs)
+
     def perform_update(self, serializer):
         previous_status = serializer.instance.status
         ticket = serializer.save()
@@ -197,6 +227,7 @@ class MaintenanceTicketViewSet(viewsets.ModelViewSet):
                 link='/maintenance',
                 event_type='ticket',
             )
+        update_asset_status_for_ticket(ticket)
         if ticket.status != 'Completed':
             maybe_send_due_notification(ticket)
 
@@ -207,7 +238,8 @@ class MaintenanceTicketViewSet(viewsets.ModelViewSet):
             message=f"{ticket.asset_ref.name if ticket.asset_ref else ticket.asset} added to {ticket.lane}.",
             link='/maintenance',
             event_type='ticket',
-        )
+            )
+        update_asset_status_for_ticket(ticket)
         if ticket.status != 'Completed':
             maybe_send_due_notification(ticket)
 
