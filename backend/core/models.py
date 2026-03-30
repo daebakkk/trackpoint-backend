@@ -13,6 +13,14 @@ class Staff(models.Model):
 
 
 class Asset(models.Model):
+    STATUS_CHOICES = [
+        ('Good condition', 'Good condition'),
+        ('In Repair', 'In Repair'),
+        ('Lost', 'Lost'),
+        ('Critical Alert', 'Critical Alert'),
+        ('Retired', 'Retired'),
+    ]
+
     name = models.CharField(max_length=100)
     asset_id = models.CharField(max_length=100, unique=True)
     location = models.CharField(max_length=100)
@@ -23,7 +31,7 @@ class Asset(models.Model):
         blank=True,
         related_name='assigned_assets',
     )
-    status = models.CharField(max_length=100)
+    status = models.CharField(max_length=100, choices=STATUS_CHOICES)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
