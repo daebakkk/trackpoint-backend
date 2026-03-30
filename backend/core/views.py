@@ -72,6 +72,10 @@ def maybe_send_due_notification(ticket):
 def update_asset_status_for_ticket(ticket):
     if ticket.status == 'Completed' or not ticket.asset_ref:
         return
+    if ticket.lane == 'Critical' and ticket.asset_ref.status != 'Critical Alert':
+        ticket.asset_ref.status = 'Critical Alert'
+        ticket.asset_ref.save(update_fields=['status'])
+        return
     eta_date = parse_eta_date(ticket.eta)
     if not eta_date:
         return
